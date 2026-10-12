@@ -649,15 +649,27 @@ void scenes::stream::gui_workspace()
 			break;
 	}
 
+	// Stay on the same row unless the next button would go past the right edge (many shared screens)
+	auto same_line_if_fits = [](const char * icon, const std::string & label) {
+		ImGui::PushFont(nullptr, ImGui::GetFontSize() * wivrn::ui::metrics::button_label_glyph);
+		float icon_w = ImGui::CalcTextSize(icon).x;
+		ImGui::PopFont();
+		float w = icon_w + ImGui::GetFontSize() * 0.4f + ImGui::CalcTextSize(label.c_str()).x + wivrn::ui::metrics::button_padding.x * 2;
+		float x = ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x;
+		if (x + w <= ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+			ImGui::SameLine();
+	};
+
 	// Switching between the shared screens needs no permission on the PC
 	if (status.state == state_t::streaming and status.monitor_count > 1)
 	{
 		for (int i = 0; i < status.monitor_count; ++i)
 		{
-			ImGui::SameLine();
+			std::string label = fmt::format(_F("Screen {}"), i + 1);
+			same_line_if_fits(ICON_FA_DISPLAY, label);
 			ImGui::PushID(i);
 			bool current = i == status.monitor;
-			if (wivrn::ui::button(ICON_FA_DISPLAY, fmt::format(_F("Screen {}"), i + 1), current ? wivrn::ui::button_style::primary : wivrn::ui::button_style::secondary) and not current)
+			if (wivrn::ui::button(ICON_FA_DISPLAY, label, current ? wivrn::ui::button_style::primary : wivrn::ui::button_style::secondary) and not current)
 			{
 				config.workspace_monitor = i;
 				config.save();
@@ -667,9 +679,9 @@ void scenes::stream::gui_workspace()
 		}
 	}
 
-	ImGui::SameLine();
 	if (status.state == state_t::streaming or status.state == state_t::waiting_permission)
 	{
+		same_line_if_fits(ICON_FA_ROTATE, _("Share other screens"));
 		if (wivrn::ui::button(ICON_FA_ROTATE, _("Share other screens"), wivrn::ui::button_style::ghost))
 			send_desktop_request(true, true);
 		if (ImGui::IsItemHovered())
@@ -677,6 +689,7 @@ void scenes::stream::gui_workspace()
 	}
 	else
 	{
+		same_line_if_fits(ICON_FA_ROTATE, _("Start desktop view"));
 		if (wivrn::ui::button(ICON_FA_ROTATE, _("Start desktop view"), wivrn::ui::button_style::secondary))
 			send_desktop_request(true);
 	}
