@@ -111,7 +111,8 @@ jobs:
 
     - name: Release build dependencies
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/') && matrix.config.preset == 'server'
+      # release uploads only in the official repository, forks have no permission for them
+      if: github.repository == 'WiVRn/WiVRn' && startsWith(github.ref, 'refs/tags/') && matrix.config.preset == 'server'
       with:
         tag_name: ${{ inputs.ref }}
         generate_release_notes: true
@@ -471,7 +472,7 @@ jobs:
     name: Create release
     runs-on: ubuntu-22.04
     needs: [build-linux, build-android, build-server-flatpak, build-ubuntu]
-    if: success() && startsWith(github.ref, 'refs/tags/')
+    if: success() && github.repository == 'WiVRn/WiVRn' && startsWith(github.ref, 'refs/tags/')
 
     steps:
     - uses: actions/checkout@v6
