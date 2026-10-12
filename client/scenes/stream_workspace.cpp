@@ -404,9 +404,13 @@ void pc_workspace::draw_keyboard(ImVec2 size)
 			}
 
 			bool latched = latched_modifiers.contains(k.code);
-			ImVec4 fill = latched ? t.accent : active ? t.control_active
-			                               : hovered  ? t.control_hovered
-			                                          : t.control;
+			ImVec4 fill = t.control;
+			if (latched)
+				fill = t.accent;
+			else if (active)
+				fill = t.control_active;
+			else if (hovered)
+				fill = t.control_hovered;
 			draw->AddRectFilled(min, max, ImGui::GetColorU32(fill), t.rounding);
 
 			const char * label = (shifted and k.shift_label) ? k.shift_label : k.label;
