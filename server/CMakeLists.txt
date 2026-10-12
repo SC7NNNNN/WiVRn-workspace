@@ -218,9 +218,10 @@ if (WIVRN_BUILD_SERVER)
 	endif()
 
 	# Desktop capture for the workspace tab: xdg-desktop-portal (through sd-bus), PipeWire and x264
+	# Optional: the server builds without desktop capture when a dependency is missing
 	pkg_search_module(DESKTOP_SDBUS IMPORTED_TARGET libsystemd libelogind)
-	if(WIVRN_USE_PIPEWIRE AND WIVRN_USE_X264 AND DESKTOP_SDBUS_FOUND)
-		pkg_check_modules(LIBSWSCALE REQUIRED IMPORTED_TARGET libswscale)
+	pkg_check_modules(LIBSWSCALE IMPORTED_TARGET libswscale)
+	if(WIVRN_USE_PIPEWIRE AND WIVRN_USE_X264 AND DESKTOP_SDBUS_FOUND AND LIBSWSCALE_FOUND)
 		target_sources(
 			wivrn-server
 			PRIVATE desktop/desktop_portal.cpp
@@ -228,6 +229,8 @@ if (WIVRN_BUILD_SERVER)
 			)
 		target_link_libraries(wivrn-server PRIVATE PkgConfig::LIBSWSCALE PkgConfig::X264 PkgConfig::DESKTOP_SDBUS)
 		target_compile_definitions(wivrn-server PRIVATE WIVRN_DESKTOP_CAPTURE=1)
+	else()
+		message(STATUS "Desktop capture (workspace tab) disabled: needs PipeWire, x264, libswscale and libsystemd/libelogind")
 	endif()
 
 	# Generate dbus interface code as a separate target to avoid warnings in generated code
