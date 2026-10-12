@@ -862,6 +862,18 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 	// popup layer floats in front of the main panel so combos and modals pop as their own quad
 	imgui_ctx->place_layer_relative(2, 0, constants::gui::popup_position);
 
+	// keyboard layer hangs from the bottom edge of the main panel, tilted up towards the user
+	{
+		using constants::workspace::keyboard_gap;
+		using constants::workspace::keyboard_pitch;
+		const float main_half_height = imgui_ctx->layers()[0].size.y / 2;
+		const float keyboard_half_height = imgui_ctx->layers()[3].size.y / 2;
+		const glm::vec3 offset{0,
+		                       -main_half_height - keyboard_gap - keyboard_half_height * std::cos(keyboard_pitch),
+		                       -keyboard_half_height * std::sin(keyboard_pitch)};
+		imgui_ctx->place_layer_relative(3, 0, offset, glm::quat(std::cos(keyboard_pitch / 2), std::sin(keyboard_pitch / 2), 0, 0));
+	}
+
 	const float tab_width = wivrn::ui::metrics::sidebar_width;
 	const float top_bar_h = wivrn::ui::metrics::top_bar_height;
 	const float content_margin = wivrn::ui::metrics::content_margin;
@@ -1165,7 +1177,20 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 		wivrn::ui::shell_dividers(top_bar_h, tab_width);
 	}
 	ImGui::End();
-	ImGui::PopStyleVar(2);  // ImGuiStyleVar_ChildBorderSize, ImGuiStyleVar_WindowPadding
+	ImGui::PopStyleVar(2); // ImGuiStyleVar_ChildBorderSize, ImGuiStyleVar_WindowPadding
+
+	// the workspace keyboard is its own panel so the desktop keeps the whole main panel
+	if (gui_status == stream_tab::workspace and workspace.is_keyboard_visible())
+	{
+		const auto & keyboard_layer = imgui_ctx->layers()[3];
+		ImGui::SetNextWindowPos(ImVec2(keyboard_layer.vp_origin.x, keyboard_layer.vp_origin.y));
+		ImGui::SetNextWindowSize(ImVec2(keyboard_layer.vp_size.x, keyboard_layer.vp_size.y));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {16, 16});
+		ImGui::Begin("Workspace keyboard", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing);
+		workspace.draw_keyboard(ImGui::GetContentRegionAvail());
+		ImGui::End();
+		ImGui::PopStyleVar();
+	}
 	ImGui::PopStyleColor(); // ImGuiCol_WindowBg
 
 	auto layers = imgui_ctx->end_frame();

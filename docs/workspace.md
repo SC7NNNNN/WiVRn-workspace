@@ -12,8 +12,8 @@ It shows your PC desktop live in the headset and lets you control it with the co
   - B: right click (the *Right click* button makes the next trigger press a right click, for the left hand)
   - Thumbstick: scroll
 - **Several screens**: share all your monitors once, then switch between them with the *Screen 1*, *Screen 2*… buttons, without any dialog on the PC.
-- **Virtual PC keyboard** below the desktop: function keys, arrows, Home/End/PgUp/PgDn, and sticky Ctrl, Alt, Shift and Super for shortcuts (tap Ctrl then C for Ctrl+C).
-  *Hide keyboard* gives the whole panel to the desktop.
+- **Virtual PC keyboard** on its own panel below the menu, tilted up towards you like a laptop keyboard: function keys, arrows, Home/End/PgUp/PgDn, and sticky Ctrl, Alt, Shift and Super for shortcuts (tap Ctrl then C for Ctrl+C).
+  The desktop always fills the whole Workspace panel; *Hide keyboard* removes the keyboard panel.
 - **Trackpad fallback**: when the desktop view is not available, the same area works as a trackpad that moves the mouse relatively.
 - Setting **Workspace mouse speed** in *Settings → Devices*, for the trackpad.
 

@@ -182,20 +182,8 @@ void pc_workspace::draw(float pointer_speed, bool right_button, ImTextureID desk
 {
 	draw_toolbar();
 
-	const ImGuiStyle & style = ImGui::GetStyle();
-	ImVec2 avail = ImGui::GetContentRegionAvail();
-
-	if (keyboard_visible)
-	{
-		// The keyboard gets 6 rows of keys of at most 70px, the trackpad the rest
-		float keyboard_height = std::min(avail.y * 0.55f, 6 * 70.f);
-		draw_pointer_area({avail.x, avail.y - keyboard_height - style.ItemSpacing.y}, pointer_speed, right_button, desktop, desktop_size);
-		draw_keyboard({avail.x, keyboard_height});
-	}
-	else
-	{
-		draw_pointer_area(avail, pointer_speed, right_button, desktop, desktop_size);
-	}
+	// The keyboard has its own panel (draw_keyboard), the desktop always gets the whole space
+	draw_pointer_area(ImGui::GetContentRegionAvail(), pointer_speed, right_button, desktop, desktop_size);
 }
 
 void pc_workspace::draw_toolbar()
@@ -417,7 +405,7 @@ void pc_workspace::draw_keyboard(ImVec2 size)
 
 			bool latched = latched_modifiers.contains(k.code);
 			ImVec4 fill = latched ? t.accent : active ? t.control_active
-			                           : hovered      ? t.control_hovered
+			                               : hovered  ? t.control_hovered
 			                                          : t.control;
 			draw->AddRectFilled(min, max, ImGui::GetColorU32(fill), t.rounding);
 

@@ -143,4 +143,8 @@ namespace constants::workspace
 {
 // Largest desktop video dimension requested from the server, fits a 1080p screen in either orientation
 constexpr uint16_t desktop_max_size = 1920;
+
+// Keyboard panel below the main panel, tilted up towards the user like a laptop keyboard
+constexpr float keyboard_gap = 0.01;   // between the bottom of the main panel and the top of the keyboard, in meters
+constexpr float keyboard_pitch = -0.6; // radians, negative tilts the keys up
 } // namespace constants::workspace

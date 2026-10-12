@@ -529,7 +529,7 @@ void scenes::stream::on_focused()
 	        device,
 	        swapchain_format,
 	        3600,
-	        1200);
+	        1760);
 
 	std::vector<imgui_context::viewport> vps{
 	        {
@@ -553,6 +553,13 @@ void scenes::stream::on_focused()
 	                .size = {1.2, 0.6666},
 	                .vp_origin = {1800, 0},
 	                .vp_size = {1800, 1000},
+	        },
+	        {
+	                // Workspace keyboard, below the main panel at the same pixel density
+	                .space = xr::spaces::world,
+	                .size = {1.2, 0.3733},
+	                .vp_origin = {0, 1200},
+	                .vp_size = {1800, 560},
 	        },
 	};
 

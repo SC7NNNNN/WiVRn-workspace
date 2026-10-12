@@ -36,10 +36,17 @@ public:
 
 	pc_workspace(send_fn send, pointer_fn pointer);
 
-	// Draw the pointer area and the keyboard in the remaining space of the current window.
+	// Draw the toolbar and the pointer area in the remaining space of the current window.
 	// right_button is the state of the controller button used for right click.
 	// When desktop is set, the PC desktop image replaces the trackpad and the mouse follows the pointer on it.
 	void draw(float pointer_speed, bool right_button, ImTextureID desktop = 0, ImVec2 desktop_size = {});
+
+	// Draw the PC keyboard at the cursor of the current window, meant for its own panel
+	void draw_keyboard(ImVec2 size);
+	bool is_keyboard_visible() const
+	{
+		return keyboard_visible;
+	}
 
 	// Release every key and mouse button still held on the PC
 	void release_all();
@@ -47,7 +54,6 @@ public:
 private:
 	void draw_toolbar();
 	void draw_pointer_area(ImVec2 size, float pointer_speed, bool right_button, ImTextureID desktop, ImVec2 desktop_size);
-	void draw_keyboard(ImVec2 size);
 
 	void key_down(uint8_t key);
 	void key_up(uint8_t key);
