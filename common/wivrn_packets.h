@@ -240,6 +240,7 @@ enum class stream_tab : uint8_t
 	foveation_settings,
 	applications,
 	application_launcher,
+	workspace,
 };
 
 struct audio_data
@@ -718,6 +719,27 @@ struct stop_application
 	uint32_t id;
 };
 
+// Start or stop streaming the PC desktop, sent when the workspace tab is opened or closed
+struct desktop_request
+{
+	bool enabled;
+	// Ask the PC to show the screen picker again instead of reusing the last choice
+	bool choose_source;
+	uint16_t max_width;
+	uint16_t max_height;
+	uint8_t fps;
+	uint32_t bitrate; // bit/s
+	// Index of the shared screen to stream, when several were shared
+	uint8_t monitor;
+};
+
+// Move the PC mouse to a position in the desktop image, in [0, 1]
+struct desktop_pointer
+{
+	float x;
+	float y;
+};
+
 // when changing this, also make sure there are handlers in wivrn_session, etc. or compilation will fail
 using packets = std::variant<
         crypto_handshake,
@@ -749,7 +771,9 @@ using packets = std::variant<
         get_running_applications,
         set_active_application,
         hid::input,
-        stop_application>;
+        stop_application,
+        desktop_request,
+        desktop_pointer>;
 } // namespace from_headset
 
 namespace to_headset
@@ -951,6 +975,35 @@ struct application_icon
 	std::vector<std::byte> image; // In PNG
 };
 
+struct desktop_status
+{
+	enum class state_t : uint8_t
+	{
+		stopped,
+		waiting_permission,
+		streaming,
+		error,
+	};
+	state_t state;
+	std::string message;
+	// Size of the encoded desktop video
+	uint16_t width;
+	uint16_t height;
+	// Whether mouse and keyboard events reach the desktop through the capture session
+	bool remote_input;
+	// Screens shared on the PC, and the one being streamed
+	uint8_t monitor_count;
+	uint8_t monitor;
+};
+
+// One H.264 access unit (Annex B) of the desktop video
+struct desktop_frame
+{
+	uint64_t frame_idx;
+	bool idr;
+	std::vector<uint8_t> data;
+};
+
 struct running_applications
 {
 	struct application
@@ -981,7 +1034,9 @@ using packets = std::variant<
         stream_tab_change,
         application_list,
         application_icon,
-        running_applications>;
+        running_applications,
+        desktop_status,
+        desktop_frame>;
 } // namespace to_headset
 } // namespace wivrn
 

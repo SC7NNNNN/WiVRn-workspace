@@ -614,6 +614,97 @@ void scenes::stream::gui_applications()
 	ImGui::PopStyleVar();
 }
 
+void scenes::stream::gui_workspace()
+{
+	auto status = *desktop_status.lock();
+	using state_t = to_headset::desktop_status::state_t;
+	auto & config = application::get_config();
+
+	// Give the whole page to the desktop once it is shown
+	if (status.state != state_t::streaming)
+		wivrn::ui::page_header(_cS("page header title", "Workspace"), _cS("page header subtitle", "See and control the PC desktop."));
+
+	if (XrTime now = instance.now(); now - desktop_bitrate_time > 1'000'000'000)
+	{
+		uint64_t bytes = desktop_bytes;
+		if (desktop_bitrate_time)
+			desktop_bitrate = (bytes - desktop_bytes_last) * 8.f / ((now - desktop_bitrate_time) * 1e-9f);
+		desktop_bytes_last = bytes;
+		desktop_bitrate_time = now;
+	}
+
+	switch (status.state)
+	{
+		case state_t::stopped:
+			wivrn::ui::chip(_("Desktop view is off"), wivrn::ui::chip_style::muted);
+			break;
+		case state_t::waiting_permission:
+			wivrn::ui::chip(_("Waiting for the screen sharing dialog on the PC monitor"), wivrn::ui::chip_style::warning);
+			break;
+		case state_t::streaming:
+			wivrn::ui::chip(fmt::format(_F("{}x{}, {:.1f} Mbit/s"), status.width, status.height, desktop_bitrate * 1e-6f), wivrn::ui::chip_style::success);
+			break;
+		case state_t::error:
+			wivrn::ui::chip(status.message, wivrn::ui::chip_style::danger);
+			break;
+	}
+
+	// Switching between the shared screens needs no permission on the PC
+	if (status.state == state_t::streaming and status.monitor_count > 1)
+	{
+		for (int i = 0; i < status.monitor_count; ++i)
+		{
+			ImGui::SameLine();
+			ImGui::PushID(i);
+			bool current = i == status.monitor;
+			if (wivrn::ui::button(ICON_FA_DISPLAY, fmt::format(_F("Screen {}"), i + 1), current ? wivrn::ui::button_style::primary : wivrn::ui::button_style::secondary) and not current)
+			{
+				config.workspace_monitor = i;
+				config.save();
+				send_desktop_request(true);
+			}
+			ImGui::PopID();
+		}
+	}
+
+	ImGui::SameLine();
+	if (status.state == state_t::streaming or status.state == state_t::waiting_permission)
+	{
+		if (wivrn::ui::button(ICON_FA_ROTATE, _("Share other screens"), wivrn::ui::button_style::ghost))
+			send_desktop_request(true, true);
+		if (ImGui::IsItemHovered())
+			imgui_ctx->tooltip(_S("Opens the screen sharing dialog on the PC monitor, select every screen you want to see"));
+	}
+	else
+	{
+		if (wivrn::ui::button(ICON_FA_ROTATE, _("Start desktop view"), wivrn::ui::button_style::secondary))
+			send_desktop_request(true);
+	}
+
+	// The capture session carries mouse and keyboard, otherwise they need hid-forwarding
+	if (not(status.state == state_t::streaming and status.remote_input) and not hid_forwarding_enabled())
+		wivrn::ui::chip(_("The server does not allow forwarded input devices, enable hid-forwarding in the server configuration"), wivrn::ui::chip_style::warning);
+	ImGui::Spacing();
+
+	bool right_button = false;
+	if (auto state = application::read_action_bool(workspace_right_click))
+		right_button = state->second;
+
+	ImTextureID texture = 0;
+	ImVec2 texture_size{};
+	if (status.state == state_t::streaming)
+	{
+		std::lock_guard lock(desktop_mutex);
+		if (desktop)
+		{
+			texture = desktop->update();
+			texture_size = desktop->size();
+		}
+	}
+
+	workspace.draw(config.workspace_pointer_speed, right_button, texture, texture_size);
+}
+
 void scenes::stream::gui_toasts()
 {
 	auto toast = gui_toast.lock();
@@ -650,6 +741,16 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 			}
 		}
 
+		if (gui_status == stream_tab::workspace)
+		{
+			workspace.release_all();
+			send_desktop_request(false);
+		}
+		else if (new_status == stream_tab::workspace)
+		{
+			send_desktop_request(true);
+		}
+
 		stored_gui_status = gui_status;
 		gui_status = new_status;
 		gui_status_last_change = predicted_display_time;
@@ -683,6 +784,7 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 		case stream_tab::settings:
 		case stream_tab::applications:
 		case stream_tab::application_launcher:
+		case stream_tab::workspace:
 			break;
 	}
 	imgui_ctx->set_controllers_enabled(interactable and not recentering_context);
@@ -750,6 +852,7 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 			case stream_tab::settings:
 			case stream_tab::applications:
 			case stream_tab::application_launcher:
+			case stream_tab::workspace:
 				imgui_ctx->layers()[0].orientation = world_gui_orientation;
 				imgui_ctx->layers()[0].position = world_gui_position;
 				break;
@@ -808,6 +911,7 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 		case stream_tab::stats:
 		case stream_tab::settings:
 		case stream_tab::applications:
+		case stream_tab::workspace:
 			ImGui::SetNextWindowPos(margin_around_window);
 			ImGui::SetNextWindowSize(viewport_size - margin_around_window * 2);
 			display_tabs = true;
@@ -910,6 +1014,18 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 		case stream_tab::application_launcher:
 			if (apps.draw_gui(*imgui_ctx, _("Cancel")) != app_launcher::None)
 				next_gui_status = stream_tab::applications;
+			break;
+
+		case stream_tab::workspace:
+			ImGui::SetCursorPos({tab_width + content_margin, top_bar_h});
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {20, 20});
+			// The thumbstick scrolls the PC, not this page
+			ImGui::BeginChild("Main", ImVec2(ImGui::GetWindowSize().x - ImGui::GetCursorPosX() - content_margin, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+			ImGui::SetCursorPosY(20);
+			gui_workspace();
+			ImGui::EndChild();
+			ImGui::PopStyleVar();
+			break;
 	}
 
 	ImGui::PopStyleVar(2); // ImGuiStyleVar_WindowPadding, ImGuiStyleVar_FrameRounding
@@ -1015,6 +1131,8 @@ void scenes::stream::draw_gui(XrTime predicted_display_time, XrDuration predicte
 				});
 				next_gui_status = stream_tab::application_launcher;
 			}
+			if (wivrn::ui::nav_item(ICON_FA_DESKTOP, _cS("tab label", "Workspace"), gui_status == stream_tab::workspace))
+				next_gui_status = stream_tab::workspace;
 			if (wivrn::ui::nav_item(ICON_FA_COMPUTER, _S("Statistics"), gui_status == stream_tab::stats))
 				next_gui_status = stream_tab::stats;
 

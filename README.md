@@ -8,6 +8,12 @@
 <p align="center"><img src="images/wivrn.svg" width="180"></p>
 <h3 align="center">Fully FOSS PCVR streamer</h3>
 
+> [!NOTE]
+> **This is a modified version of WiVRn** that adds a **Workspace** tab to the in-stream menu:
+> a live view of your PC desktop that you control with the controller pointers, plus a virtual PC keyboard.
+> See [docs/workspace.md](docs/workspace.md). It is not affiliated with the official WiVRn project,
+> the original is at https://github.com/WiVRn/WiVRn.
+
 # About
 
 WiVRn is an application that wirelessly streams a virtual reality game to a standalone VR headset from a <b>Linux</b> computer.

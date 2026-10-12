@@ -217,6 +217,19 @@ if (WIVRN_BUILD_SERVER)
 		target_link_libraries(wivrn-server PRIVATE PkgConfig::libpipewire)
 	endif()
 
+	# Desktop capture for the workspace tab: xdg-desktop-portal (through sd-bus), PipeWire and x264
+	pkg_search_module(DESKTOP_SDBUS IMPORTED_TARGET libsystemd libelogind)
+	if(WIVRN_USE_PIPEWIRE AND WIVRN_USE_X264 AND DESKTOP_SDBUS_FOUND)
+		pkg_check_modules(LIBSWSCALE REQUIRED IMPORTED_TARGET libswscale)
+		target_sources(
+			wivrn-server
+			PRIVATE desktop/desktop_portal.cpp
+				desktop/desktop_streamer.cpp
+			)
+		target_link_libraries(wivrn-server PRIVATE PkgConfig::LIBSWSCALE PkgConfig::X264 PkgConfig::DESKTOP_SDBUS)
+		target_compile_definitions(wivrn-server PRIVATE WIVRN_DESKTOP_CAPTURE=1)
+	endif()
+
 	# Generate dbus interface code as a separate target to avoid warnings in generated code
 	add_custom_command(OUTPUT wivrn_server_dbus.c wivrn_server_dbus.h
 			   COMMAND ${GDBUS_CODEGEN} ${CMAKE_CURRENT_SOURCE_DIR}/../dbus/io.github.wivrn.Server.xml --interface-prefix io.github.wivrn --generate-c-code wivrn_server_dbus --c-namespace Wivrn

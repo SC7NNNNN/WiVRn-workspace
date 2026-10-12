@@ -138,3 +138,9 @@ constexpr float gui_min_layer_distance = 0.5;
 constexpr float gui_max_layer_distance = 3;
 
 } // namespace constants::stream
+
+namespace constants::workspace
+{
+// Largest desktop video dimension requested from the server, fits a 1080p screen in either orientation
+constexpr uint16_t desktop_max_size = 1920;
+} // namespace constants::workspace

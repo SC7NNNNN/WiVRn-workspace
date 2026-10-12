@@ -575,6 +575,19 @@ void settings_devices(const settings_context & ctx)
 	        .default_bool = default_config.forward_gamepad,
 	});
 
+	list.push_back({
+	        .id = "##workspace_pointer_speed",
+	        .label = _C("setting name", "Workspace mouse speed"),
+	        .description = _("How fast the PC mouse moves when pointing at the workspace trackpad."),
+	        .ui = ui_kind::slider,
+	        .get_int = [&config] { return int(std::lround(config.workspace_pointer_speed * 100)); },
+	        .set_int = [&config](int v) { config.workspace_pointer_speed = v / 100.f; config.save(); },
+	        .v_min = 25,
+	        .v_max = 400,
+	        .fmt = "%d%%",
+	        .default_int = int(std::lround(default_config.workspace_pointer_speed * 100)),
+	});
+
 	ui::page_header(_cS("page header title", "Devices"), _cS("page header subtitle", "Forward input devices to the PC."));
 	render_settings(ctx, "##devices", list);
 

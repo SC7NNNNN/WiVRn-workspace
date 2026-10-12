@@ -72,6 +72,8 @@ public:
 	~imgui_textures();
 	ImTextureID load_texture(const std::string & filename);
 	ImTextureID load_texture(const std::span<const std::byte> & bytes, const std::string & name = "");
+	// Use an image owned by the caller as a texture, it must stay valid until free_texture
+	ImTextureID add_texture(vk::ImageView image_view, vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal);
 	void free_texture(ImTextureID);
 };
 

@@ -20,6 +20,8 @@
 
 #include "wivrn_session.h"
 
+#include "desktop/desktop_streamer.h"
+
 #include "accept_connection.h"
 #include "application.h"
 #include "configuration.h"
@@ -776,6 +778,11 @@ void wivrn_session::operator()(from_headset::hid::input && e)
 {
 	try
 	{
+#if WIVRN_DESKTOP_CAPTURE
+		// While the desktop is captured, input goes through the capture session
+		if (desktop and desktop->handle_input(e))
+			return;
+#endif
 		if (uinput_handler)
 			uinput_handler->handle_input(e);
 	}
@@ -985,6 +992,35 @@ void wivrn_session::operator()(audio_data && data)
 void wivrn_session::operator()(to_monado::stop &&)
 {
 	request_stop();
+}
+
+void wivrn_session::operator()(from_headset::desktop_request && request)
+{
+#if WIVRN_DESKTOP_CAPTURE
+	if (not desktop)
+	{
+		if (not request.enabled)
+			return;
+		desktop = std::make_unique<desktop_streamer>(
+		        [this](to_headset::desktop_status && status) { send_control(std::move(status)); },
+		        [this](to_headset::desktop_frame && frame) { send_control(std::move(frame)); });
+	}
+	desktop->request(request);
+#else
+	if (request.enabled)
+		send_control(to_headset::desktop_status{
+		        .state = to_headset::desktop_status::state_t::error,
+		        .message = "This server was built without desktop capture",
+		});
+#endif
+}
+
+void wivrn_session::operator()(from_headset::desktop_pointer && pointer)
+{
+#if WIVRN_DESKTOP_CAPTURE
+	if (desktop)
+		desktop->pointer(pointer);
+#endif
 }
 
 void wivrn_session::operator()(to_monado::disconnect &&)

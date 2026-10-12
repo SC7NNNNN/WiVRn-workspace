@@ -1214,6 +1214,28 @@ ImTextureID imgui_textures::load_texture(const std::span<const std::byte> & byte
 	return id;
 }
 
+ImTextureID imgui_textures::add_texture(vk::ImageView image_view, vk::ImageLayout layout)
+{
+	std::shared_ptr<vk::raii::DescriptorSet> ds = descriptor_pool.allocate();
+
+	vk::DescriptorImageInfo image_info{
+	        .imageView = image_view,
+	        .imageLayout = layout,
+	};
+
+	vk::WriteDescriptorSet ds_write{
+	        .dstSet = **ds,
+	        .descriptorCount = 1,
+	        .descriptorType = vk::DescriptorType::eSampledImage,
+	        .pImageInfo = &image_info};
+
+	device.updateDescriptorSets(ds_write, nullptr);
+
+	ImTextureID id = reinterpret_cast<ImTextureID>(VkDescriptorSet(**ds));
+	textures.emplace(id, texture_data{.descriptor_set = std::move(ds)});
+	return id;
+}
+
 void imgui_textures::free_texture(ImTextureID texture)
 {
 	textures.erase(texture);

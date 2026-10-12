@@ -87,6 +87,14 @@ public:
 	bool forward_mouse = false;
 	bool forward_gamepad = false;
 
+	// Workspace tab: PC mouse speed relative to the controller pointer
+	float workspace_pointer_speed = 1.5;
+	// Workspace tab: desktop video settings
+	uint32_t workspace_desktop_fps = 30;
+	uint32_t workspace_desktop_bitrate = 15'000'000;
+	// Workspace tab: shared screen to show
+	uint32_t workspace_monitor = 0;
+
 	std::underlying_type_t<wivrn::from_headset::body_part_mask> body_part_mask = ~0;
 
 	bool enable_stream_gui = true;

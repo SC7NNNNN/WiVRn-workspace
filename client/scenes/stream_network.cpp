@@ -20,6 +20,7 @@
 #include "stream.h"
 
 #include "application.h"
+#include "constants.h"
 #include "utils/i18n.h"
 #include "utils/named_thread.h"
 
@@ -167,6 +168,54 @@ void scenes::stream::operator()(to_headset::application_icon && icon)
 void scenes::stream::operator()(to_headset::running_applications && apps)
 {
 	*running_applications.lock() = std::move(apps);
+}
+
+void scenes::stream::operator()(to_headset::desktop_status && status)
+{
+	spdlog::info("Desktop capture: {} {} {}x{}", magic_enum::enum_name(status.state), status.message, status.width, status.height);
+
+	{
+		std::lock_guard lock(desktop_mutex);
+		if (status.state == to_headset::desktop_status::state_t::streaming)
+		{
+			// The server sends the status before the first frame of a new encoder, which is a full frame
+			std::pair size{status.width, status.height};
+			if (desktop and size != desktop_decoder_size)
+				desktop->reset(status.width, status.height);
+			desktop_decoder_size = size;
+		}
+		else
+		{
+			if (desktop)
+				desktop->stop();
+			desktop_decoder_size = {};
+		}
+	}
+
+	*desktop_status.lock() = std::move(status);
+}
+
+void scenes::stream::operator()(to_headset::desktop_frame && frame)
+{
+	desktop_bytes += frame.data.size();
+
+	std::lock_guard lock(desktop_mutex);
+	if (desktop)
+		desktop->push_frame(std::move(frame));
+}
+
+void scenes::stream::send_desktop_request(bool enabled, bool choose_source)
+{
+	const auto & config = application::get_config();
+	network_session->send_control(from_headset::desktop_request{
+	        .enabled = enabled,
+	        .choose_source = choose_source,
+	        .max_width = constants::workspace::desktop_max_size,
+	        .max_height = constants::workspace::desktop_max_size,
+	        .fps = uint8_t(config.workspace_desktop_fps),
+	        .bitrate = config.workspace_desktop_bitrate,
+	        .monitor = uint8_t(config.workspace_monitor),
+	});
 }
 
 void scenes::stream::start_application(std::string appid)

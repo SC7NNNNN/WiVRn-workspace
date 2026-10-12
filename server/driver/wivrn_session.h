@@ -60,6 +60,7 @@ class wivrn_fb_face2_tracker;
 class wivrn_htc_face_tracker;
 class wivrn_body_tracker;
 class wivrn_generic_tracker;
+class desktop_streamer;
 struct audio_device;
 
 class wivrn_session : public xrt_system_devices
@@ -104,6 +105,8 @@ class wivrn_session : public xrt_system_devices
 	std::optional<wivrn_body_tracker> body_tracker;
 	beman::inplace_vector::inplace_vector<wivrn_generic_tracker, from_headset::htc_body::max_tracked_poses> generic_trackers;
 	std::optional<wivrn_uinput> uinput_handler;
+	// Desktop capture for the workspace tab, created on the first request
+	std::unique_ptr<desktop_streamer> desktop;
 	bool gamepad_connected = false; // network thread only
 
 	clock_offset_estimator offset_est;
@@ -188,6 +191,8 @@ public:
 	void operator()(const from_headset::get_running_applications &);
 	void operator()(const from_headset::set_active_application &);
 	void operator()(const from_headset::stop_application &);
+	void operator()(from_headset::desktop_request &&);
+	void operator()(from_headset::desktop_pointer &&);
 	void operator()(audio_data &&);
 
 	void operator()(to_monado::stop &&);

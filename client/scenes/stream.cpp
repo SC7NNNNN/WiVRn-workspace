@@ -200,7 +200,16 @@ static const std::array supported_depth_formats{
 
 scenes::stream::stream(std::string server_name, scene & parent_scene) :
         scene_impl<stream>(supported_color_formats, supported_depth_formats, parent_scene),
-        apps{*this, std::move(server_name)}
+        apps{*this, std::move(server_name)},
+        workspace{
+                [this](from_headset::hid::input_t packet) {
+	                // The desktop capture session carries input without hid-forwarding
+	                if (auto status = desktop_status.lock(); status->state == to_headset::desktop_status::state_t::streaming and status->remote_input)
+		                network_session->send_control(from_headset::hid::input{packet});
+	                else
+		                forward_hid_input(packet, true);
+                },
+                [this](float x, float y) { network_session->send_control(from_headset::desktop_pointer{.x = x, .y = y}); }}
 {
 	auto views = system.view_configuration_views(viewconfig);
 	width = views[0].recommendedImageRectWidth;
@@ -556,6 +565,15 @@ void scenes::stream::on_focused()
 	                  std::move(vps),
 	                  image_cache);
 
+	{
+		std::lock_guard lock(desktop_mutex);
+		desktop = std::make_unique<desktop_view>(device, physical_device, queue, queue_family_index, *imgui_ctx);
+		desktop_decoder_size = {};
+	}
+	// A new decoder needs a full frame of the desktop
+	if (auto status = *desktop_status.lock(); status.state == to_headset::desktop_status::state_t::streaming and gui_status == stream_tab::workspace)
+		send_desktop_request(true);
+
 	// match the lobby's seasonal wordmark logo
 	{
 		auto t = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -584,6 +602,7 @@ void scenes::stream::on_focused()
 	foveation_distance = get_action("foveation_distance").first;
 	foveation_ok = get_action("foveation_ok").first;
 	foveation_cancel = get_action("foveation_cancel").first;
+	workspace_right_click = get_action("workspace_right_click").first;
 
 	if (application::get_config().high_power_mode)
 	{
@@ -606,6 +625,10 @@ void scenes::stream::on_unfocused()
 	right_hand.reset();
 	apps.reset();
 
+	{
+		std::lock_guard lock(desktop_mutex);
+		desktop.reset();
+	}
 	imgui_ctx.reset();
 }
 
@@ -821,6 +844,7 @@ bool scenes::stream::is_interactable(stream_tab tab)
 		case stream_tab::foveation_settings:
 		case stream_tab::applications:
 		case stream_tab::application_launcher:
+		case stream_tab::workspace:
 			return true;
 
 		case stream_tab::hidden:
@@ -1079,6 +1103,7 @@ void scenes::stream::render(const XrFrameState & frame_state)
 			case stream_tab::settings:
 			case stream_tab::applications:
 			case stream_tab::application_launcher:
+			case stream_tab::workspace:
 				dimming = dimming + frame_state.predictedDisplayPeriod / (1e9 * constants::stream::fade_duration);
 				break;
 		}
@@ -1363,6 +1388,7 @@ scene::meta & scenes::stream::get_meta_scene()
 	                {"foveation_distance", XR_ACTION_TYPE_FLOAT_INPUT},
 	                {"foveation_ok", XR_ACTION_TYPE_BOOLEAN_INPUT},
 	                {"foveation_cancel", XR_ACTION_TYPE_BOOLEAN_INPUT},
+	                {"workspace_right_click", XR_ACTION_TYPE_BOOLEAN_INPUT},
 	        },
 	        .bindings = {
 	                suggested_binding{
@@ -1399,6 +1425,7 @@ scene::meta & scenes::stream::get_meta_scene()
 	                                {"foveation_distance", "/user/hand/left/input/thumbstick/y"},
 	                                {"foveation_ok", "/user/hand/right/input/a/click"},
 	                                {"foveation_cancel", "/user/hand/right/input/b/click"},
+	                                {"workspace_right_click", "/user/hand/right/input/b/click"},
 
 	                                {"plots_toggle_1", "/user/hand/left/input/thumbstick/click"},
 	                                {"plots_toggle_2", "/user/hand/right/input/thumbstick/click"},

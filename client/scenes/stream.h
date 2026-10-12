@@ -24,10 +24,12 @@
 #include "audio/audio.h"
 #include "configuration.h"
 #include "decoder/shard_accumulator.h"
+#include "desktop_view.h"
 #include "render/imgui_impl.h"
 #include "scene.h"
 #include "scenes/input_profile.h"
 #include "stream_defoveator.h"
+#include "stream_workspace.h"
 #include "utils/thread_safe.h"
 #include "wifi_lock.h"
 #include "wivrn_client.h"
@@ -181,6 +183,21 @@ private:
 	XrAction foveation_distance = XR_NULL_HANDLE;
 	XrAction foveation_ok = XR_NULL_HANDLE;
 	XrAction foveation_cancel = XR_NULL_HANDLE;
+	XrAction workspace_right_click = XR_NULL_HANDLE;
+
+	// Trackpad and keyboard controlling the PC from the workspace tab
+	pc_workspace workspace;
+
+	// Desktop video for the workspace tab, the view exists while the GUI exists
+	std::mutex desktop_mutex;
+	std::unique_ptr<desktop_view> desktop;
+	std::pair<uint16_t, uint16_t> desktop_decoder_size{}; // locked by desktop_mutex
+	thread_safe<to_headset::desktop_status> desktop_status{};
+	std::atomic<uint64_t> desktop_bytes = 0;
+	uint64_t desktop_bytes_last = 0;
+	XrTime desktop_bitrate_time = 0;
+	float desktop_bitrate = 0;
+	void send_desktop_request(bool enabled, bool choose_source = false);
 
 	// Position of the GUI relative to the view space, in view space axes, used when the GUI is not interactable
 	glm::vec3 head_gui_position{-0.1, -0.3, -1.2}; // Shift 10cm left by default so that the stats are centered accounting for the tab list
@@ -246,6 +263,8 @@ public:
 	void operator()(to_headset::application_list &&);
 	void operator()(to_headset::application_icon &&);
 	void operator()(to_headset::running_applications &&);
+	void operator()(to_headset::desktop_status &&);
+	void operator()(to_headset::desktop_frame &&);
 	void operator()(audio_data &&);
 
 	void push_blit_handle(wivrn::shard_accumulator * decoder, std::shared_ptr<wivrn::shard_accumulator::blit_handle> handle);
@@ -352,6 +371,7 @@ private:
 	void gui_bitrate_settings(float predicted_display_period);
 	void gui_foveation_settings(float predicted_display_period);
 	void gui_applications();
+	void gui_workspace();
 	void gui_toasts();
 	void draw_gui(XrTime predicted_display_time, XrDuration predicted_display_period);
 };
