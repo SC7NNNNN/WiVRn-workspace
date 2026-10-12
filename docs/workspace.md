@@ -38,7 +38,7 @@ cd WiVRn-workspace/packaging/arch
 makepkg -si
 ```
 
-On other distributions, build the server as described in [building](building.md).
+Steps for Fedora, Debian / Ubuntu and openSUSE are in the [README](../README.md#pc).
 
 **Headset**: download `WiVRn-workspace-quest.apk` from the [releases](https://github.com/SC7NNNNN/WiVRn-workspace/releases)
 and install it with `adb install WiVRn-workspace-quest.apk` (developer mode required).
