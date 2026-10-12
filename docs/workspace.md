@@ -27,6 +27,23 @@ It shows your PC desktop live in the headset and lets you control it with the co
 Mouse and keyboard go through the RemoteDesktop portal while the desktop is shown, `hid-forwarding` is not needed.
 The trackpad fallback uses `hid-forwarding` (see [configuration](configuration.md#hid-forwarding)).
 
+## Installing
+
+**PC (Arch Linux and derivatives)**: this builds the server and dashboard and installs them as the package `wivrn-workspace`,
+which replaces `wivrn-server` and `wivrn-dashboard`:
+
+```sh
+git clone https://github.com/SC7NNNNN/WiVRn-workspace.git
+cd WiVRn-workspace/packaging/arch
+makepkg -si
+```
+
+On other distributions, build the server as described in [building](building.md).
+
+**Headset**: download `WiVRn-workspace-quest.apk` from the [releases](https://github.com/SC7NNNNN/WiVRn-workspace/releases)
+and install it with `adb install WiVRn-workspace-quest.apk` (developer mode required).
+It installs next to the official app, start it from *Library → Unknown Sources*.
+
 ## First use
 
 1. Start the server and connect the headset.

@@ -1,0 +1,50 @@
+# Builds WiVRn with the Workspace tab from https://github.com/SC7NNNNN/WiVRn-workspace
+# and installs it as a system package, in place of the AUR wivrn-server and wivrn-dashboard.
+#   git clone https://github.com/SC7NNNNN/WiVRn-workspace.git
+#   cd WiVRn-workspace/packaging/arch
+#   makepkg -si
+
+pkgname=wivrn-workspace
+pkgver=26.9.workspace1
+pkgrel=1
+pkgdesc="WiVRn PCVR streaming server and dashboard, with the Workspace tab (live PC desktop in the headset)"
+arch=('x86_64')
+url="https://github.com/SC7NNNNN/WiVRn-workspace"
+license=('GPL-3.0-or-later')
+depends=(avahi boost-libs cairo ffmpeg glib2 glibc libarchive libbsd libgcc libgl libnotify libpipewire libpng
+         librsvg libstdc++ libx11 libxcb openssl systemd-libs vulkan-icd-loader x264
+         hicolor-icon-theme kcoreaddons ki18n kiconthemes kirigami kirigami-addons polkit qcoro
+         qqc2-desktop-style qt6-base qt6-declarative xdg-desktop-portal)
+makedepends=(boost cmake git glib2-devel ninja nlohmann-json vulkan-headers cli11 eigen libdrm libxrandr
+             extra-cmake-modules qt6-tools)
+optdepends=('xrizer: OpenVR to OpenXR translation layer'
+            'opencomposite: OpenVR to OpenXR translation layer')
+provides=('openxr-runtime' 'wivrn-server=26.9' 'wivrn-dashboard=26.9')
+conflicts=('wivrn-server' 'wivrn-dashboard')
+options=('!debug')
+source=("WiVRn-workspace::git+https://github.com/SC7NNNNN/WiVRn-workspace.git#branch=main")
+sha256sums=('SKIP')
+
+build() {
+	cmake -B build -S WiVRn-workspace -G Ninja \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DWIVRN_BUILD_SERVER=ON \
+		-DWIVRN_BUILD_WIVRNCTL=ON \
+		-DWIVRN_BUILD_DASHBOARD=ON \
+		-DWIVRN_BUILD_CLIENT=OFF \
+		-DWIVRN_OPENXR_MANIFEST_TYPE=relative \
+		-DWIVRN_USE_VAAPI=ON \
+		-DWIVRN_USE_X264=ON \
+		-DWIVRN_USE_PIPEWIRE=ON \
+		-DOVR_COMPAT_SEARCH_PATH=/opt/xrizer:/opt/opencomposite:/opt/VapoR \
+		-Wno-dev
+	cmake --build build
+}
+
+package() {
+	DESTDIR="$pkgdir" cmake --install build
+
+	# Lets Steam's runtime container see the OpenXR runtime (same as the AUR package)
+	install -Dm644 /dev/stdin "$pkgdir/usr/lib/environment.d/wivrn.conf" <<<'PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1'
+}
